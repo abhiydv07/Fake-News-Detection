@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake News Detection - API Interface</title>
+<style>
+  :root, [data-theme="dark"] {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #8b8d97;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+    --result-json-bg: #13151c;
+  }
+  [data-theme="light"] {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --border: #d1d5db;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --accent: #6366f1;
+    --green: #16a34a;
+    --red: #dc2626;
+    --orange: #d97706;
+    --result-json-bg: #f0f0f2;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.8rem; margin-bottom: 8px; }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 16px; }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+  .status-dot.live { background: var(--green); }
+  .status-text { font-size: 0.9rem; }
+
+  textarea {
+    width: 100%;
+    height: 120px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #5558e6; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .threshold-label { color: var(--muted); font-size: 0.85rem; }
+  .threshold-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 280px;
+  }
+  .threshold-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  .threshold-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--card);
+    box-shadow: 0 0 0 2px var(--accent);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .threshold-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+  .threshold-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--card);
+    box-shadow: 0 0 0 2px var(--accent);
+    cursor: pointer;
+  }
+  .threshold-value {
+    min-width: 42px;
+    padding: 4px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: 'Consolas', monospace;
+  }
+
+  .result-box {
+    margin-top: 16px;
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+    font-family: 'Consolas', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+  .result-box.show { display: block; }
+  .result-real { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); }
+  .result-fake { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); }
+
+  .result-label { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
+  .result-label.real { color: var(--green); }
+  .result-label.fake { color: var(--red); }
+
+  .conf-row { display: flex; gap: 20px; margin-top: 10px; }
+  .conf-item { flex: 1; }
+  .conf-item .label { color: var(--muted); font-size: 0.8rem; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+  .bar-real { background: var(--green); }
+  .bar-fake { background: var(--red); }
+
+  .batch-results {
+    margin-top: 12px;
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .batch-results th, .batch-results td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .batch-results th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+  .batch-results .real { color: var(--green); font-weight: 600; }
+  .batch-results .fake { color: var(--red); font-weight: 600; }
+  .batch-results .conf { color: var(--green); }
+  .batch-results .uncertain { color: var(--red); }
+
+  .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .example-chip {
+    padding: 6px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .example-chip:hover { border-color: var(--accent); }
+
+  .raw-json {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 16px; }
+  .tab {
+    padding: 10px 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+  .tab:first-child { border-radius: 8px 0 0 8px; }
+  .tab:last-child { border-radius: 0 8px 8px 0; }
+  .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .mode-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .mode-badge.show { display: inline-flex; }
+  .mode-badge.offline {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #f59e0b;
+  }
+  .mode-badge.online {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.4);
+    color: #22c55e;
+  }
+  .mode-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .mode-badge.offline .mode-badge-dot { background: var(--orange); }
+  .mode-badge.online .mode-badge-dot { background: var(--green); }
+  .mode-badge.offline { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: var(--orange); }
+  .mode-badge.online { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.4); color: var(--green); }
+
+  [data-theme="light"] .status-bar { background: var(--card); border-color: var(--border); }
+  [data-theme="light"] .card { background: var(--card); border-color: var(--border); }
+  [data-theme="light"] textarea { background: #f0f0f2; border-color: var(--border); color: var(--text); }
+  [data-theme="light"] .threshold-value { background: #f0f0f2; border-color: var(--border); color: var(--text); }
+  [data-theme="light"] .tab { background: #e5e7eb; border-color: var(--border); color: var(--muted); }
+  [data-theme="light"] .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+  [data-theme="light"] .raw-json { background: var(--result-json-bg); border-color: var(--border); color: var(--muted); }
+  [data-theme="light"] .example-chip { background: #f0f0f2; border-color: var(--border); color: var(--text); }
+  [data-theme="light"] .mode-badge.offline { background: rgba(245, 158, 11, 0.12); }
+  [data-theme="light"] .mode-badge.online { background: rgba(34, 197, 94, 0.12); }
+
+  .theme-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+  .theme-toggle:hover { border-color: var(--accent); background: var(--accent); color: white; }
+  .container { position: relative; }
+
+  /* History panel */
+  .history-section { margin-top: 24px; }
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .history-header h2 { font-size: 1.1rem; font-weight: 600; }
+  .history-actions { display: flex; gap: 8px; align-items: center; }
+  .history-count {
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 4px 10px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .btn-clear {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-clear:hover { border-color: var(--red); color: var(--red); }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color 0.2s;
+  }
+  .history-item:hover { border-color: var(--accent); }
+  .history-badge {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 52px;
+    text-align: center;
+  }
+  .history-badge.real { background: rgba(34,197,94,0.15); color: var(--green); }
+  .history-badge.fake { background: rgba(239,68,68,0.15); color: var(--red); }
+  .history-text {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-meta {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .history-conf {
+    font-weight: 600;
+  }
+  .history-conf.high { color: var(--green); }
+  .history-conf.low { color: var(--red); }
+  .history-time { white-space: nowrap; }
+  .history-source {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+  .history-empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  /* Validation */
+  .validation-msg {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    animation: shake 0.3s ease;
+  }
+  .validation-msg.show { display: flex; align-items: center; gap: 6px; }
+  .validation-msg.error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--red);
+  }
+  .validation-msg.warn {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--orange);
+  }
+  .char-count {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 4px;
+    text-align: right;
+  }
+  .char-count.near-limit { color: var(--orange); }
+  .char-count.at-limit { color: var(--red); font-weight: 600; }
+  textarea.error-border { border-color: var(--red) !important; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+  [data-theme="light"] .history-item { background: var(--card); border-color: var(--border); }
+  [data-theme="light"] .history-count { background: #f0f0f2; border-color: var(--border); }
+  [data-theme="light"] .history-source { background: #f0f0f2; border-color: var(--border); }
+
+  /* ── Mobile Responsive ── */
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    h1 { font-size: 1.3rem; }
+    .subtitle { font-size: 0.85rem; margin-bottom: 16px; }
+    .card { padding: 16px; }
+    .theme-toggle { top: 12px; right: 12px; width: 38px; height: 38px; font-size: 1rem; }
+    .tabs { flex-direction: column; }
+    .tab:first-child { border-radius: 8px 8px 0 0; }
+    .tab:last-child { border-radius: 0 0 8px 8px; }
+    .btn-row { flex-direction: column; align-items: stretch; }
+    .threshold-group { max-width: 100%; }
+    .conf-row { flex-direction: column; gap: 10px; }
+    .batch-results { font-size: 0.8rem; }
+    .batch-results th, .batch-results td { padding: 8px 6px; }
+    .batch-results { display: block; overflow-x: auto; }
+    .history-item { flex-wrap: wrap; gap: 8px; }
+    .history-meta { width: 100%; justify-content: space-between; }
+    .history-text { white-space: normal; }
+    .share-row { flex-direction: column; gap: 8px; }
+    .btn-copy { align-self: flex-start; }
+  }
+  @media (max-width: 400px) {
+    .examples { gap: 4px; }
+    .example-chip { font-size: 0.7rem; padding: 4px 8px; }
+    .batch-results { font-size: 0.72rem; }
+  }
+
+  /* ── Accessible focus styles ── */
+  .btn:focus-visible, .tab:focus-visible, .theme-toggle:focus-visible, .btn-copy:focus-visible, .btn-clear:focus-visible, .example-chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,0.25); }
+  .threshold-slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── Animated confidence bars ── */
+  .bar-fill { width: 0 !important; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
+  .bar-fill.animate-real { width: var(--target-width) !important; }
+  .bar-fill.animate-fake { width: var(--target-width) !important; }
+
+  /* ── Comparison Mode ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+  .compare-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .compare-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .compare-panel-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .compare-panel-tag {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .compare-panel-tag.api {
+    background: rgba(34,197,94,0.15);
+    color: var(--green);
+  }
+  .compare-panel-tag.offline {
+    background: rgba(245,158,11,0.15);
+    color: var(--orange);
+  }
+  .compare-result-label {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+  .compare-result-label.real { color: var(--green); }
+  .compare-result-label.fake { color: var(--red); }
+  .compare-conf-row { display: flex; gap: 12px; margin-top: 6px; }
+  .compare-conf-item { flex: 1; }
+  .compare-conf-item .label { color: var(--muted); font-size: 0.75rem; margin-bottom: 3px; display: flex; justify-content: space-between; }
+  .compare-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .compare-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.22,1,0.36,1); }
+  .compare-match {
+    text-align: center;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .compare-match.agree {
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.25);
+    color: var(--green);
+  }
+  .compare-match.disagree {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: var(--red);
+  }
+  .compare-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 30px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  [data-theme="light"] .compare-panel { background: #f0f0f2; border-color: var(--border); }
+
+  /* ── File Upload Drop Zone ── */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-top: 12px;
+    background: var(--bg);
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(99, 102, 241, 0.06);
+  }
+  .drop-zone.drag-over {
+    border-style: solid;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  }
+  .drop-zone-icon {
+    font-size: 2rem;
+    margin-bottom: 6px;
+    opacity: 0.7;
+  }
+  .drop-zone-text {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .drop-zone-text strong {
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .drop-zone-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 6px;
+    opacity: 0.7;
+  }
+  .drop-zone.loaded {
+    border-color: var(--green);
+    border-style: solid;
+    background: rgba(34, 197, 94, 0.06);
+  }
+  .drop-zone.loaded .drop-zone-icon { opacity: 1; }
+  .drop-zone.loaded .drop-zone-text { color: var(--green); }
+  .drop-zone input[type="file"] { display: none; }
+  [data-theme="light"] .drop-zone { background: #f0f0f2; }
+  [data-theme="light"] .drop-zone.drag-over { background: rgba(99, 102, 241, 0.08); }
+  [data-theme="light"] .drop-zone.loaded { background: rgba(34, 197, 94, 0.08); }
+
+  /* Share / Copy */
+  .share-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-copy.copied { border-color: var(--green); color: var(--green); }
+  .copy-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 10px 20px;
+    background: var(--green);
+    color: white;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  .copy-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .conn-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .conn-toast.online { background: var(--green); color: white; }
+  .conn-toast.offline { background: var(--orange); color: #1a1a2e; }
+  .conn-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .conn-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  /* ── Tooltips ── */
+  .info-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--muted);
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+    line-height: 1;
+    user-select: none;
+  }
+  .info-tip:hover { background: var(--accent); color: white; }
+  .info-tip .tip-content {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.5;
+    z-index: 100;
+    text-align: left;
+    pointer-events: none;
+  }
+  .info-tip .tip-content::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--border);
+  }
+  .info-tip:hover .tip-content { display: block; }
+  .tip-content strong { color: var(--accent); }
+  .tip-content .tip-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .tip-content .tip-row:last-child { margin-bottom: 0; }
+  .tip-content .tip-icon { flex-shrink: 0; }
+  .tip-content .tip-label { font-weight: 600; white-space: nowrap; }
+  [data-theme="light"] .info-tip .tip-content { background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+  [data-theme="light"] .info-tip .tip-content::after { border-top-color: var(--border); }
+
+  /* Help guide section */
+  .help-section {
+    margin-top: 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  .help-header:hover { background: var(--bg); }
+  .help-header h2 { font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .help-arrow {
+    transition: transform 0.25s;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  .help-arrow.open { transform: rotate(180deg); }
+  .help-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+  }
+  .help-body.open { max-height: 800px; }
+  .help-body-inner { padding: 0 20px 20px; }
+  .help-levels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  @media (max-width: 500px) { .help-levels { grid-template-columns: 1fr; } }
+  .help-level-card {
+    padding: 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .help-level-card h3 {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .help-level-card p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .help-level-card .range {
+    font-family: 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .help-level-card.high { border-left: 3px solid var(--green); }
+  .help-level-card.medium { border-left: 3px solid var(--orange); }
+  .help-level-card.low { border-left: 3px solid var(--red); }
+  .help-level-card.info { border-left: 3px solid var(--accent); }
+  .help-note {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .help-note strong { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="container">
+  <button class="theme-toggle" id="themeToggle" title="Toggle dark/light theme">🌙</button>
+  <h1>Fake News Detection <span>API</span></h1>
+  <p class="subtitle">Test the ML classifier via REST API</p>
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span class="status-text" id="statusText">Checking API...</span>
+  </div>
+
+  <div id="modeBadge" class="mode-badge">
+    <div class="mode-badge-dot"></div>
+    <span id="modeBadgeText"></span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('single')">Single Prediction</div>
+    <div class="tab" onclick="switchTab('batch')">Batch Prediction</div>
+    <div class="tab" onclick="switchTab('compare')">Compare</div>
+  </div>
+
+  <!-- Single Prediction -->
+  <div id="singleTab">
+    <div class="card">
+      <h2 id="singleHeading">Classify a News Article</h2>
+      <textarea id="inputText" placeholder="Paste a news headline or article here..." maxlength="5000" oninput="validateSingleInput()" aria-labelledby="singleHeading" aria-describedby="charCount validationMsg">Government using birds to spy on citizens claims conspiracy theorist</textarea>
+      <div class="char-count" id="charCount">0 / 5,000</div>
+      <div class="validation-msg" id="validationMsg"></div>
+
+      <div class="examples">
+        <span class="example-chip" tabindex="0" role="button" onclick="setExample(0)" onkeydown="if(event.key==='Enter')setExample(0)">Real: WHO vaccine</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setExample(1)" onkeydown="if(event.key==='Enter')setExample(1)">Fake: conspiracy</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setExample(2)" onkeydown="if(event.key==='Enter')setExample(2)">Real: SpaceX launch</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setExample(3)" onkeydown="if(event.key==='Enter')setExample(3)">Fake: bleach cure</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setExample(4)" onkeydown="if(event.key==='Enter')setExample(4)">Real: stock market</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="predictBtn" onclick="predict()">Analyze</button>
+        <div class="threshold-group">
+          <span class="threshold-label">Threshold:<span class="info-tip">?<span class="tip-content"><strong>Confidence Threshold</strong><br>Minimum certainty required for a prediction to be considered reliable. Higher = fewer false alarms but may miss some fakes.<br><br><strong>Recommended:</strong> 0.60 for general use, 0.80 for strict filtering.</span></span></span>
+          <input type="range" class="threshold-slider" id="threshold" min="0" max="1" step="0.05" value="0.6" oninput="updateThreshold(this.value)">
+          <span class="threshold-value" id="thresholdValue">0.60</span>
+        </div>
+      </div>
+
+      <div class="result-box" id="resultBox">
+        <div class="result-label" id="resultLabel"></div>
+        <div class="conf-row">
+          <div class="conf-item">
+            <div class="label"><span>REAL</span><span id="realPct"></span></div>
+            <div class="bar"><div class="bar-fill bar-real" id="realBar"></div></div>
+          </div>
+          <div class="conf-item">
+            <div class="label"><span>FAKE</span><span id="fakePct"></span></div>
+            <div class="bar"><div class="bar-fill bar-fake" id="fakeBar"></div></div>
+          </div>
+        </div>
+        <div id="confidenceTag" style="margin-top:10px;font-size:0.85rem;"></div>
+      </div>
+
+      <div class="raw-json" id="rawJson" style="display:none;">
+        <div class="share-row">
+          <span></span>
+          <button class="btn-copy" id="copyBtn" onclick="copyResult()">📋 Copy result</button>
+        </div>
+      </div>
+      <div class="copy-toast" id="copyToast">✓ Copied to clipboard!</div>
+    </div>
+  </div>
+
+  <!-- Batch Prediction -->
+  <div id="batchTab" style="display:none;">
+    <div class="card">
+      <h2 id="batchHeading">Classify Multiple Articles</h2>
+      <textarea id="batchInput" placeholder="One news article per line..." maxlength="10000" oninput="validateBatchInput()" aria-labelledby="batchHeading" aria-describedby="batchCharCount batchValidationMsg">Federal Reserve raises interest rates by 25 basis points
+WHO approves new malaria vaccine for children under 5
+Drinking bleach cures all diseases instantly
+Secret society controls world economy from underground bunker
+NASA successfully launches Starship into orbit</textarea>
+      <div class="char-count" id="batchCharCount">0 / 10,000</div>
+      <div class="validation-msg" id="batchValidationMsg"></div>
+
+      <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Upload a .txt file with one article per line">
+        <input type="file" id="fileInput" accept=".txt,.csv" />
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-text">Drag & drop a <strong>.txt</strong> file here or <strong>browse</strong></div>
+        <div class="drop-zone-hint">One article per line — will append to the textarea</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="batchBtn" onclick="batchPredict()">Analyze All</button>
+      </div>
+
+      <div id="batchResults"></div>
+    </div>
+  </div>
+
+  <!-- Comparison Mode -->
+  <div id="compareTab" style="display:none;">
+    <div class="card">
+      <h2 id="compareHeading">Compare Classifiers</h2>
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:12px;">Run the same text through both the API model and the offline keyword classifier to see how they differ.</p>
+      <textarea id="compareInput" placeholder="Paste a news headline or article here..." maxlength="5000" oninput="validateCompareInput()" aria-labelledby="compareHeading">Government using birds to spy on citizens claims conspiracy theorist</textarea>
+      <div class="char-count" id="compareCharCount">0 / 5,000</div>
+      <div class="validation-msg" id="compareValidationMsg"></div>
+
+      <div class="examples" style="margin-bottom:8px;">
+        <span class="example-chip" tabindex="0" role="button" onclick="setCompareExample(0)" onkeydown="if(event.key==='Enter')setCompareExample(0)">Real: WHO vaccine</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setCompareExample(1)" onkeydown="if(event.key==='Enter')setCompareExample(1)">Fake: conspiracy</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setCompareExample(2)" onkeydown="if(event.key==='Enter')setCompareExample(2)">Real: SpaceX</span>
+        <span class="example-chip" tabindex="0" role="button" onclick="setCompareExample(3)" onkeydown="if(event.key==='Enter')setCompareExample(3)">Fake: bleach cure</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="compareBtn" onclick="compareClassifiers()">Compare Both</button>
+      </div>
+
+      <div class="compare-grid" id="compareResults">
+        <div class="compare-empty">Paste text and click Compare Both to see results side-by-side.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div class="history-section">
+    <div class="history-header">
+      <h2>Prediction History</h2>
+      <div class="history-actions">
+        <span class="history-count" id="historyCount">0 predictions</span>
+        <button class="btn-clear" onclick="clearHistory()">Clear All</button>
+      </div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty">No predictions yet. Analyze some news to build history.</div>
+    </div>
+  </div>
+
+  <!-- Help Guide -->
+  <div class="help-section" id="helpSection">
+    <div class="help-header" onclick="toggleHelp()">
+      <h2>❓ Understanding Confidence Levels</h2>
+      <span class="help-arrow" id="helpArrow">▼</span>
+    </div>
+    <div class="help-body" id="helpBody">
+      <div class="help-body-inner">
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:8px;">The classifier gives each prediction a confidence score from 0% to 100%. Here's what those numbers mean:</p>
+        <div class="help-levels">
+          <div class="help-level-card high">
+            <div class="range">90% — 100%</div>
+            <h3 style="color:var(--green);">Very High Confidence</h3>
+            <p>The model is very certain. Strong signals (like conspiracy keywords or official sources) make this an easy call. These predictions are highly reliable.</p>
+          </div>
+          <div class="help-level-card medium">
+            <div class="range">70% — 89%</div>
+            <h3 style="color:var(--green);">High Confidence</h3>
+            <p>The model is fairly certain. Most predictions land here. Reliable for general screening, but borderline cases may need a quick glance.</p>
+          </div>
+          <div class="help-level-card info">
+            <div class="range">50% — 69%</div>
+            <h3 style="color:var(--orange);">Moderate Confidence</h3>
+            <p>The model sees some signals but is less sure. Short texts, neutral topics, or mixed signals can cause this. Best to read the article yourself.</p>
+          </div>
+          <div class="help-level-card low">
+            <div class="range">Below 50%</div>
+            <h3 style="color:var(--red);">Low Confidence</h3>
+            <p>The model is essentially guessing. This happens with very short text, unusual topics, or content the model hasn't learned well. Treat with caution.</p>
+          </div>
+        </div>
+        <div class="help-note">
+          <strong>💡 Tip:</strong> Use the <strong>threshold slider</strong> to control how strict the classifier is. At 0.60 (default), most reasonable predictions pass. Raise it to 0.80+ if you only want the most reliable results. The <strong>Compare</strong> tab lets you see how the ML model and keyword classifier differ — when they agree, you can be more confident in the result.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+let apiAvailable = false;
+
+// ── Client-side fallback classifier (enhanced) ──
+// Each entry: [keyword/phrase, weight]
+const fakeIndicators = [
+  // Conspiracy / hoaxes
+  ['conspiracy', 2.5], ['conspiracy theorist', 3], ['secret government', 3],
+  ['government conspiracy', 3], ['secret society', 3], ['deep state', 2.5],
+  ['cover up', 2.5], ['they dont want you to know', 3], ['they dont want you to know', 3],
+  ['hoax', 2.5], ['false flag', 3], ['crisis actor', 3], ['inside job', 2.5],
+  ['coverup', 2.5], ['suppressed', 2], ['censored', 2], ['mainstream media lies', 3],
+  // Medical / health misinformation
+  ['miracle cure', 3], ['miracle cure', 3], ['cures all', 3], ['cures all diseases', 3],
+  ['instantly cure', 3], ['big pharma', 2.5], ['secret cure', 3], ['natural remedy cures', 2.5],
+  ['bleach cure', 3], ['bleach kills', 3], ['drinking bleach', 3], ['urine therapy', 3],
+  ['anti-vax', 2.5], ['vaccines cause autism', 3], ['microchip vaccine', 3],
+  ['fake doctor', 3], ['chemical trails', 2.5], ['chemtrails', 2.5],
+  // Aliens / paranormal
+  ['aliens', 2], ['aliens secretly', 3], ['shapeshifter', 3], ['hollow earth', 3],
+  ['ufo cover', 3], ['government hiding aliens', 3], ['mind control', 2.5],
+  ['microchip implant', 2.5], ['5g causes', 3], ['5g radiation', 3],
+  // Spy / surveillance
+  ['birds to spy', 3], ['spy on citizens', 3], ['government using birds', 3],
+  ['spy drones disguised', 3], ['surveillance birds', 3],
+  // Suspicious sourcing
+  ['anonymous source', 2], ['anonymous blogger', 2], ['they dont want you', 2.5],
+  ['claims conspiracy', 3], ['bizarre claim', 2.5], ['bizarre', 1.5],
+  ['absurd', 2], ['baseless', 2], ['debunked', 2], ['scam', 2.5],
+  ['fabricated', 2.5], ['made up', 2], ['fake news', 2], ['satire', 1.5],
+  // Extreme / sensational
+  ['dead celebrities are alive', 3], ['flat earth', 3], ['moon is made of', 3],
+  ['holographic', 2], ['electromagnetic mind', 3], ['poison', 1.5],
+  ['chemical weapon', 2], ['instant death', 2], ['secret document', 2],
+  ['controls your thoughts', 3], ['world domination', 2.5], ['illuminati', 2.5],
+  ['secretly controlled', 2.5], ['mind-altering', 2], ['lobsters have feelings', 3],
+  ['pyramid scheme', 2.5], ['nwo', 2], ['martial law', 2],
+  ['stock market crash predicted', 2.5], ['end of the world', 2.5],
+  ['april fools', 2], ['you wont believe', 2.5], ['shocking truth', 2],
+  ['what they are hiding', 2.5], ['exposed', 1.5], ['wake up', 2],
+  ['sheeple', 2.5], ['prove me wrong', 1.5],
+];
+
+const realIndicators = [
+  // Institutional / official sources
+  ['according to', 2], ['reported by', 2], ['announced that', 1.5],
+  ['published in', 2], ['study finds', 2], ['study reveals', 2],
+  ['researchers at', 2], ['researchers found', 2], ['university', 1.5],
+  ['scientists', 1.5], ['clinical trial', 2], ['peer-reviewed', 2.5],
+  // Organizations
+  ['world health organization', 2], ['who ', 1], ['federal reserve', 2],
+  ['nasa', 2], ['nasa successfully', 2.5], ['congress', 1.5],
+  ['senate', 1.5], ['supreme court', 1.5], ['white house', 1.5],
+  ['department of', 1], ['bureau of', 1], ['national institute', 1.5],
+  // Finance / economy
+  ['stock market', 1.5], ['interest rates', 2], ['gdp', 1.5],
+  ['economic growth', 1.5], ['unemployment rate', 2], ['investors', 1.5],
+  ['billion', 1], ['trillion', 1], ['index reached', 1.5],
+  ['earnings report', 1.5], ['quarterly results', 1.5],
+  // Science / tech
+  ['launches', 1.5], ['orbit', 1], ['satellite', 1.5], ['spacecraft', 1.5],
+  ['breakthrough', 1.5], ['innovation', 1], ['developed', 1],
+  ['renewable energy', 1.5], ['electric vehicle', 1.5], ['autonomous', 1],
+  ['artificial intelligence', 1], ['quantum computing', 1.5],
+  // Infrastructure / policy
+  ['legislation', 1.5], ['infrastructure', 1], ['regulatory', 1.5],
+  ['sustainable', 1], ['policy', 1], ['bipartisan', 1.5],
+  ['approved by', 1.5], ['signed into law', 2], ['budget', 1],
+  // Measurements / data
+  ['record high', 1.5], ['record low', 1.5], ['percent', 0.5],
+  ['efficiency', 1], ['performance', 1], ['improvement', 1],
+  // Vaccine / health (real)
+  ['vaccine', 1.5], ['malaria vaccine', 2], ['approves new', 1.5],
+  ['distribution', 1], ['children under', 1],
+];
+
+// Bigram/pair patterns that strongly signal fake news
+const fakePatterns = [
+  [/(?:claims?|says|said)\s+(?:conspiracy|anonymous|unknown)/i, 3],
+  [/(?:birds?|animals?)\s+(?:to\s+)?spy/i, 3],
+  [/(?:government|fbi|cia)\s+(?:using|hiding|covering)/i, 2.5],
+  [/(?:bleach|urine|oil)\s+(?:cures?|kills?|prevents?)/i, 3],
+  [/(?:5g|wifi|radio)\s+(?:causes?|radiation|dangerous)/i, 2.5],
+  [/(?:dead|deceased)\s+(?:celebrities?|people?)\s+(?:are|is)\s+alive/i, 3],
+  [/(?:they|them)\s+(?:dont want|hiding|dont want you)/i, 2.5],
+];
+
+// Real news pattern signals
+const realPatterns = [
+  [/(?:study|research)\s+(?:finds?|reveals?|shows?|suggests?|confirms?)/i, 2],
+  [/(?:\$|usd|euro|gbp)\s*\d+/i, 1],
+  [/(?:percent|%|points?)\s+(?:increase|decrease|rise|drop|gain)/i, 1.5],
+  [/(?:announces?|launches?|approves?)\s+(?:new|plan|mission|program)/i, 1.5],
+  [/(?:record|all-time)\s+(?:high|low)/i, 1.5],
+];
+
+function clientSideClassify(text) {
+  const lower = text.toLowerCase();
+  let fakeScore = 0, realScore = 0;
+  let matchedFake = [], matchedReal = [];
+
+  // Keyword matching with weights
+  for (const [kw, weight] of fakeIndicators) {
+    if (lower.includes(kw)) { fakeScore += weight; matchedFake.push(kw); }
+  }
+  for (const [kw, weight] of realIndicators) {
+    if (lower.includes(kw)) { realScore += weight; matchedReal.push(kw); }
+  }
+
+  // Pattern matching
+  for (const [regex, weight] of fakePatterns) {
+    if (regex.test(text)) { fakeScore += weight; }
+  }
+  for (const [regex, weight] of realPatterns) {
+    if (regex.test(text)) { realScore += weight; }
+  }
+
+  // Stylistic signals (fake news often uses sensational formatting)
+  const exclamations = (text.match(/!/g) || []).length;
+  const capsWords = (text.match(/\b[A-Z]{3,}\b/g) || []).length;
+  const allCapsWords = (text.match(/\b[A-Z]{4,}\b/g) || []).length;
+  fakeScore += exclamations * 0.8;
+  fakeScore += capsWords * 1.0;
+  fakeScore += allCapsWords * 1.5;
+
+  // Question marks in news headlines can indicate skepticism
+  const questions = (text.match(/\?/g) || []).length;
+  fakeScore += questions * 0.4;
+
+  // Real news tends to have numbers/data
+  const numbers = (text.match(/\d+(?:\.\d+)?(?:\s*(?:%|percent|points?|billion|million|trillion))?/gi) || []).length;
+  realScore += numbers * 0.3;
+
+  // Normalize with sigmoid-like curve for better calibration
+  const total = fakeScore + realScore + 0.01;
+  const rawFake = fakeScore / total;
+  const rawReal = realScore / total;
+
+  // Apply a slight bias toward real when scores are very low (neutral text)
+  const baseFake = 0.45;
+  const baseReal = 0.55;
+  const blend = Math.min(1, (fakeScore + realScore) / 8);
+  const fakeProb = Math.min(0.99, Math.max(0.01, baseFake * (1 - blend) + rawFake * blend));
+  const realProb = 1 - fakeProb;
+
+  const threshold = parseFloat(document.getElementById('threshold').value) || 0.5;
+  const confidence = Math.max(realProb, fakeProb);
+
+  return {
+    label: realProb >= fakeProb ? 'REAL' : 'FAKE',
+    confidence: Math.round(confidence * 10000) / 10000,
+    real_probability: Math.round(realProb * 10000) / 10000,
+    fake_probability: Math.round(fakeProb * 10000) / 10000,
+    is_confident: confidence >= threshold
+  };
+}
+
+const examples = [
+  'World Health Organization approves new malaria vaccine for distribution in Africa',
+  'Government using birds to spy on citizens claims conspiracy theorist',
+  'SpaceX successfully launches Starship into orbit carrying satellites',
+  'Drinking bleach kills all viruses instantly says fake doctor on social media',
+  'Stock market reaches all-time high amid economic recovery and strong earnings',
+  'Secret society controls world economy from underground bunker claims anonymous source',
+  'New study finds coffee reduces risk of heart disease by 20 percent',
+  'Viral post claims WiFi signals cause headaches and brain damage in children'
+];
+
+function setExample(idx) {
+  document.getElementById('inputText').value = examples[idx];
+  predict();
+}
+
+function switchTab(tab) {
+  const tabs = document.querySelectorAll('.tab');
+  const tabNames = ['single', 'batch', 'compare'];
+  const tabIds = ['singleTab', 'batchTab', 'compareTab'];
+  const idx = tabNames.indexOf(tab);
+  tabs.forEach((t, i) => t.classList.toggle('active', i === idx));
+  tabIds.forEach((id, i) => {
+    document.getElementById(id).style.display = i === idx ? 'block' : 'none';
+  });
+}
+
+function setModeBadge(mode) {
+  const badge = document.getElementById('modeBadge');
+  const text = document.getElementById('modeBadgeText');
+  badge.className = 'mode-badge show ' + mode;
+  if (mode === 'online') {
+    text.textContent = 'ML Model (API)';
+  } else {
+    text.textContent = 'Offline Mode — Keyword Classifier';
+  }
+}
+
+let isReconnecting = false;
+let reconnectTimer = null;
+
+function showConnToast(type, msg) {
+  let toast = document.getElementById('connToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'connToast';
+    toast.className = 'conn-toast';
+    document.body.appendChild(toast);
+  }
+  toast.className = 'conn-toast ' + type;
+  toast.innerHTML = (type === 'offline' ? '📡' : '🌐') + ' ' + msg;
+  requestAnimationFrame(() => toast.classList.add('show'));
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+async function checkHealth() {
+  try {
+    const resp = await fetch(`${API}/health`, { signal: AbortSignal.timeout(5000) });
+    const data = await resp.json();
+    const wasOffline = !apiAvailable;
+    apiAvailable = true;
+    isReconnecting = false;
+    clearTimeout(reconnectTimer);
+    document.getElementById('statusDot').classList.add('live');
+    document.getElementById('statusText').textContent = `API connected - Model loaded: ${data.model_loaded}`;
+    setModeBadge('online');
+    if (wasOffline) showConnToast('online', 'API is back online — using ML model');
+  } catch (e) {
+    const wasOnline = apiAvailable;
+    apiAvailable = false;
+    document.getElementById('statusDot').classList.remove('live');
+    if (!navigator.onLine) {
+      document.getElementById('statusText').innerHTML = 'No internet connection — offline classifier active';
+    } else {
+      document.getElementById('statusText').innerHTML = 'ML server not running — <span style="cursor:pointer;text-decoration:underline;color:var(--accent);" onclick="copyStartCommand()" title="Click to copy command">run <code>cd fake-news-detection && python api.py</code></span>';
+    }
+    setModeBadge('offline');
+    if (wasOnline) showConnToast('offline', 'API unreachable — switched to offline classifier');
+  }
+}
+
+// ── Auto-detect connectivity changes ──
+window.addEventListener('online', () => {
+  showConnToast('online', 'Internet restored — checking API...');
+  document.getElementById('statusText').textContent = 'Internet restored — checking API...';
+  startReconnect();
+});
+
+window.addEventListener('offline', () => {
+  apiAvailable = false;
+  clearTimeout(reconnectTimer);
+  isReconnecting = false;
+  document.getElementById('statusDot').classList.remove('live');
+  document.getElementById('statusText').textContent = 'No internet connection — offline classifier active';
+  setModeBadge('offline');
+  showConnToast('offline', 'No internet — offline classifier active');
+});
+
+function copyStartCommand() {
+  navigator.clipboard.writeText('cd fake-news-detection && python api.py').then(() => {
+    showConnToast('online', 'Copied! Paste in terminal and press Enter');
+  }).catch(() => {});
+}
+
+function startReconnect() {
+  if (isReconnecting) return;
+  isReconnecting = true;
+  let attempts = 0;
+  const maxAttempts = 10;
+  const baseDelay = 2000;
+
+  function tryConnect() {
+    attempts++;
+    if (attempts > maxAttempts || apiAvailable) {
+      isReconnecting = false;
+      if (!apiAvailable && attempts > maxAttempts) {
+        document.getElementById('statusText').innerHTML = 'ML server not running — <span style="cursor:pointer;text-decoration:underline;color:var(--accent);" onclick="copyStartCommand()" title="Click to copy command">run <code>python api.py</code> in terminal</span>';
+        showConnToast('offline', 'API still unavailable — using offline classifier');
+      }
+      return;
+    }        document.getElementById('statusText').innerHTML = `Reconnecting to API... <span style="opacity:0.7;">(attempt ${attempts}/${maxAttempts})</span>`;
+    checkHealth().then(() => {
+      if (!apiAvailable && navigator.onLine) {
+        const delay = Math.min(baseDelay * Math.pow(1.5, attempts), 15000);
+        reconnectTimer = setTimeout(tryConnect, delay);
+      }
+    });
+  }
+  tryConnect();
+}
+
+function validateSingleInput() {
+  const textarea = document.getElementById('inputText');
+  const text = textarea.value;
+  const len = text.length;
+  const msg = document.getElementById('validationMsg');
+  const count = document.getElementById('charCount');
+
+  // Update char count
+  count.textContent = len.toLocaleString() + ' / 5,000';
+  count.className = 'char-count' + (len > 4500 ? (len >= 5000 ? ' at-limit' : ' near-limit') : '');
+
+  // Validation
+  if (len > 5000) {
+    msg.className = 'validation-msg show error';
+    msg.innerHTML = '⚠ Text exceeds 5,000 character limit. Please shorten your input.';
+    textarea.classList.add('error-border');
+    return false;
+  } else if (len > 4500) {
+    msg.className = 'validation-msg show warn';
+    msg.innerHTML = '⚡ Approaching character limit (' + (5000 - len) + ' remaining).';
+    textarea.classList.remove('error-border');
+    return true;
+  } else {
+    msg.className = 'validation-msg';
+    textarea.classList.remove('error-border');
+    return true;
+  }
+}
+
+// ── Copy / Share ──
+function copyResult() {
+  const raw = document.getElementById('rawJson');
+  const text = raw.dataset.text || '';
+  const label = raw.dataset.label || '';
+  const confidence = parseFloat(raw.dataset.confidence) || 0;
+  const real = parseFloat(raw.dataset.real) || 0;
+  const fake = parseFloat(raw.dataset.fake) || 0;
+  const confident = raw.dataset.confident === 'true';
+
+  const output = [
+    'Fake News Detection — Prediction Result',
+    '========================================',
+    '',
+    'Text: ' + text,
+    '',
+    'Label:       ' + label + ' NEWS',
+    'Confidence:  ' + (confidence * 100).toFixed(1) + '%',
+    'Real:        ' + (real * 100).toFixed(1) + '%',
+    'Fake:        ' + (fake * 100).toFixed(1) + '%',
+    'Confident:   ' + (confident ? 'Yes' : 'No (below threshold)'),
+    '',
+    'Classified by: Fake News Detection API'
+  ].join('\n');
+
+  navigator.clipboard.writeText(output).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = '✓ Copied!';
+    showToast();
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copy result';
+    }, 2000);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = output;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.innerHTML = '✓ Copied!';
+    showToast();
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copy result';
+    }, 2000);
+  });
+}
+
+function showToast() {
+  const toast = document.getElementById('copyToast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function showValidation(elId, type, html) {
+  const msg = document.getElementById(elId);
+  msg.className = 'validation-msg show ' + type;
+  msg.innerHTML = html;
+}
+
+function hideValidation(elId) {
+  document.getElementById(elId).className = 'validation-msg';
+}
+
+async function predict() {
+  const textarea = document.getElementById('inputText');
+  const text = textarea.value.trim();
+
+  if (!text) {
+    showValidation('validationMsg', 'error', '⚠ Please enter some text to analyze.');
+    textarea.classList.add('error-border');
+    return;
+  }
+  if (text.length < 5) {
+    showValidation('validationMsg', 'warn', '⚡ Text is very short. Results may be less accurate for very brief inputs.');
+  }
+  if (!validateSingleInput()) return;
+
+  hideValidation('validationMsg');
+  textarea.classList.remove('error-border');
+
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span>Analyzing...';
+
+  if (apiAvailable) {
+    try {
+      const resp = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text,
+          confidence_threshold: parseFloat(document.getElementById('threshold').value)
+        })
+      });
+      const data = await resp.json();
+      showResult(data);
+    } catch (e) {
+      // API dropped — fall back to client-side
+      showResult(clientSideClassify(text));
+    }
+  } else {
+    showResult(clientSideClassify(text));
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Analyze';
+}
+
+function showResult(data) {
+  // Save to history
+  const text = document.getElementById('inputText').value.trim();
+  if (text) saveToHistory(text, data);
+
+  const box = document.getElementById('resultBox');
+  const label = document.getElementById('resultLabel');
+  const isReal = data.label === 'REAL';
+
+  box.className = 'result-box show ' + (isReal ? 'result-real' : 'result-fake');
+  label.className = 'result-label ' + (isReal ? 'real' : 'fake');
+  label.textContent = isReal ? 'REAL NEWS' : 'FAKE NEWS';
+
+  document.getElementById('realPct').textContent = (data.real_probability * 100).toFixed(1) + '%';
+  document.getElementById('fakePct').textContent = (data.fake_probability * 100).toFixed(1) + '%';
+
+  // Animate confidence bars
+  const realBar = document.getElementById('realBar');
+  const fakeBar = document.getElementById('fakeBar');
+  realBar.className = 'bar-fill bar-real';
+  fakeBar.className = 'bar-fill bar-fake';
+  realBar.style.setProperty('--target-width', (data.real_probability * 100) + '%');
+  fakeBar.style.setProperty('--target-width', (data.fake_probability * 100) + '%');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      realBar.classList.add('animate-real');
+      fakeBar.classList.add('animate-fake');
+    });
+  });
+
+  const tag = document.getElementById('confidenceTag');
+  if (data.is_confident) {
+    tag.innerHTML = '<span style="color:var(--green);">CONFIDENT</span> — Prediction above threshold<span class="info-tip" style="vertical-align:middle;">?<span class="tip-content"><strong>Confident</strong><br>The model is sufficiently certain about this prediction (above your ' + parseFloat(document.getElementById('threshold').value).toFixed(2) + ' threshold). This result is likely reliable.</span></span>';
+  } else {
+    tag.innerHTML = '<span style="color:var(--red);">UNCERTAIN</span> — Below threshold, recommend human review<span class="info-tip" style="vertical-align:middle;">?<span class="tip-content"><strong>Uncertain</strong><br>The model is not confident enough about this prediction. The article may be borderline or the model lacks enough signal. Consider reading the article yourself or adjusting the threshold lower.</span></span>';
+  }
+
+  const raw = document.getElementById('rawJson');
+  raw.style.display = 'block';
+  // Store data for copy
+  raw.dataset.label = data.label;
+  raw.dataset.confidence = data.confidence;
+  raw.dataset.real = data.real_probability;
+  raw.dataset.fake = data.fake_probability;
+  raw.dataset.text = document.getElementById('inputText').value.trim();
+  raw.dataset.confident = data.is_confident;
+  raw.querySelector('span').textContent = JSON.stringify(data, null, 2);
+}
+
+function validateBatchInput() {
+  const textarea = document.getElementById('batchInput');
+  const text = textarea.value;
+  const len = text.length;
+  const count = document.getElementById('batchCharCount');
+
+  count.textContent = len.toLocaleString() + ' / 10,000';
+  count.className = 'char-count' + (len > 9000 ? (len >= 10000 ? ' at-limit' : ' near-limit') : '');
+
+  if (len > 10000) {
+    textarea.classList.add('error-border');
+    return false;
+  }
+  textarea.classList.remove('error-border');
+  return true;
+}
+
+async function batchPredict() {
+  const textarea = document.getElementById('batchInput');
+  const text = textarea.value.trim();
+
+  if (!text) {
+    showValidation('batchValidationMsg', 'error', '⚠ Please enter at least one article to analyze.');
+    textarea.classList.add('error-border');
+    return;
+  }
+  if (!validateBatchInput()) {
+    showValidation('batchValidationMsg', 'error', '⚠ Input exceeds 10,000 character limit. Please reduce the number of articles.');
+    return;
+  }
+
+  const lines = text.split('\n').filter(l => l.trim());
+
+  if (lines.length > 100) {
+    showValidation('batchValidationMsg', 'warn', '⚡ ' + lines.length + ' articles detected. Processing may take a moment.');
+  } else {
+    hideValidation('batchValidationMsg');
+  }
+
+  textarea.classList.remove('error-border');
+  const btn = document.getElementById('batchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span>Analyzing...';
+
+  if (apiAvailable) {
+    try {
+      const resp = await fetch(`${API}/predict/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          texts: lines,
+          confidence_threshold: parseFloat(document.getElementById('threshold').value)
+        })
+      });
+      const data = await resp.json();
+      showBatchResults(data, lines);
+    } catch (e) {
+      const predictions = lines.map(t => clientSideClassify(t));
+      const confident = predictions.filter(p => p.is_confident).length;
+      showBatchResults({ predictions, total: predictions.length, confident_count: confident, uncertain_count: predictions.length - confident }, lines);
+    }
+  } else {
+    const predictions = lines.map(t => clientSideClassify(t));
+    const confident = predictions.filter(p => p.is_confident).length;
+    showBatchResults({ predictions, total: predictions.length, confident_count: confident, uncertain_count: predictions.length - confident }, lines);
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Analyze All';
+}
+
+let lastBatchData = null;
+let lastBatchTexts = null;
+
+function showBatchResults(data, texts) {
+  lastBatchData = data;
+  lastBatchTexts = texts;
+
+  let html = `<div style="margin-top:12px;padding:10px;display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:0.9rem;">
+    <span>Total: ${data.total} | Confident: ${data.confident_count} | Uncertain: ${data.uncertain_count}</span>
+    <button class="btn btn-secondary" style="padding:6px 14px;font-size:0.8rem;" onclick="exportBatchCSV()">⬇ Export CSV</button>
+  </div>
+  <table class="batch-results">
+    <thead><tr><th>#</th><th>Text</th><th>Label</th><th>Confidence</th><th>Real %</th><th>Fake %</th><th>Status</th></tr></thead>
+    <tbody>`;
+
+  data.predictions.forEach((p, i) => {
+    const cls = p.label === 'REAL' ? 'real' : 'fake';
+    const confCls = p.is_confident ? 'conf' : 'uncertain';
+    const status = p.is_confident ? 'CONFIDENT' : 'UNCERTAIN';
+    const displayText = (texts[i] || '').substring(0, 60);
+    html += `<tr>
+      <td>${i + 1}</td>
+      <td>${displayText}</td>
+      <td class="${cls}">${p.label}</td>
+      <td>${(p.confidence * 100).toFixed(1)}%</td>
+      <td>${(p.real_probability * 100).toFixed(1)}%</td>
+      <td>${(p.fake_probability * 100).toFixed(1)}%</td>
+      <td class="${confCls}" style="white-space:nowrap;">${status}<span class="info-tip" style="margin-left:4px;">?<span class="tip-content"><strong>${status}</strong><br>${p.is_confident ? 'This prediction meets the confidence threshold and is likely reliable.' : 'Below threshold — the model is uncertain about this result. Consider reviewing this article manually.'}</span></span></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('batchResults').innerHTML = html;
+
+  // Save batch results to history
+  data.predictions.forEach((p, i) => {
+    if (texts[i]) saveToHistory(texts[i], p, 'batch');
+  });
+}
+
+function exportBatchCSV() {
+  if (!lastBatchData || !lastBatchTexts) return;
+
+  const rows = [['#', 'Text', 'Label', 'Confidence', 'Real Probability', 'Fake Probability', 'Status']];
+  lastBatchData.predictions.forEach((p, i) => {
+    rows.push([
+      i + 1,
+      '"' + (lastBatchTexts[i] || '').replace(/"/g, '""') + '"',
+      p.label,
+      (p.confidence * 100).toFixed(1) + '%',
+      (p.real_probability * 100).toFixed(1) + '%',
+      (p.fake_probability * 100).toFixed(1) + '%',
+      p.is_confident ? 'CONFIDENT' : 'UNCERTAIN'
+    ]);
+  });
+
+  // Add summary row
+  rows.push([]);
+  rows.push(['Total', lastBatchData.total]);
+  rows.push(['Confident', lastBatchData.confident_count]);
+  rows.push(['Uncertain', lastBatchData.uncertain_count]);
+
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'fake-news-predictions-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ── History ──
+const HISTORY_KEY = 'fn_detection_history';
+const MAX_HISTORY = 50;
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveToHistory(text, result, source = 'single') {
+  const history = getHistory();
+  history.unshift({
+    text: text.substring(0, 200),
+    label: result.label,
+    confidence: result.confidence,
+    real_probability: result.real_probability,
+    fake_probability: result.fake_probability,
+    source: source,
+    time: new Date().toISOString()
+  });
+  // Cap history size
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const list = document.getElementById('historyList');
+  const count = document.getElementById('historyCount');
+  count.textContent = history.length + ' prediction' + (history.length !== 1 ? 's' : '');
+
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No predictions yet. Analyze some news to build history.</div>';
+    return;
+  }
+
+  list.innerHTML = history.map(item => {
+    const cls = item.label === 'REAL' ? 'real' : 'fake';
+    const confVal = (item.confidence * 100).toFixed(1);
+    const confCls = item.confidence >= 0.7 ? 'high' : 'low';
+    const time = formatTime(item.time);
+    const sourceTag = item.source === 'batch' ? '<span class="history-source">batch</span>' : '';
+    return `<div class="history-item">
+      <span class="history-badge ${cls}">${item.label}</span>
+      <span class="history-text" title="${item.text.replace(/"/g, '&quot;')}">${item.text}</span>
+      <div class="history-meta">
+        <span class="history-conf ${confCls}">${confVal}%</span>
+        ${sourceTag}
+        <span class="history-time">${time}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  return d.toLocaleDateString();
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+}
+
+// ── Theme toggle ──
+function toggleTheme() {
+  const html = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+  const current = html.getAttribute('data-theme');
+  const next = current === 'light' ? 'dark' : 'light';
+  html.setAttribute('data-theme', next);
+  btn.textContent = next === 'dark' ? '🌙' : '☀️';
+  localStorage.setItem('theme', next);
+}
+
+// Restore saved theme
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('themeToggle');
+  if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+})();
+
+// ── Threshold slider ──
+function updateThreshold(val) {
+  const v = parseFloat(val);
+  document.getElementById('thresholdValue').textContent = v.toFixed(2);
+  updateSliderTrack(v);
+}
+
+function updateSliderTrack(val) {
+  const slider = document.getElementById('threshold');
+  const pct = val * 100;
+  const trackColor = getComputedStyle(document.documentElement).getPropertyValue('--border').trim();
+  const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  slider.style.background = `linear-gradient(to right, ${accentColor} 0%, ${accentColor} ${pct}%, ${trackColor} ${pct}%, ${trackColor} 100%)`;
+}
+
+// Initialize slider visual
+updateThreshold(0.6);
+
+// Initialize char counts
+validateSingleInput();
+validateBatchInput();
+validateCompareInput();
+
+// Bind theme toggle via event listener (avoids inline onclick issues)
+document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+// ── Comparison Mode ──
+const compareExamples = [
+  'World Health Organization approves new malaria vaccine for distribution in Africa',
+  'Government using birds to spy on citizens claims conspiracy theorist',
+  'SpaceX successfully launches Starship into orbit carrying satellites',
+  'Drinking bleach kills all viruses instantly says fake doctor on social media'
+];
+
+function setCompareExample(idx) {
+  document.getElementById('compareInput').value = compareExamples[idx];
+  validateCompareInput();
+}
+
+function validateCompareInput() {
+  const textarea = document.getElementById('compareInput');
+  const text = textarea.value;
+  const len = text.length;
+  const count = document.getElementById('compareCharCount');
+  count.textContent = len.toLocaleString() + ' / 5,000';
+  count.className = 'char-count' + (len > 4500 ? (len >= 5000 ? ' at-limit' : ' near-limit') : '');
+  if (len > 5000) {
+    textarea.classList.add('error-border');
+    return false;
+  }
+  textarea.classList.remove('error-border');
+  return true;
+}
+
+function renderComparePanel(title, tag, tagClass, result) {
+  const isReal = result.label === 'REAL';
+  return `
+    <div class="compare-panel">
+      <div class="compare-panel-header">
+        <span class="compare-panel-title">${title}</span>
+        <span class="compare-panel-tag ${tagClass}">${tag}</span>
+      </div>
+      <div class="compare-result-label ${isReal ? 'real' : 'fake'}">${isReal ? 'REAL NEWS' : 'FAKE NEWS'}</div>
+      <div class="compare-conf-row">
+        <div class="compare-conf-item">
+          <div class="label"><span>REAL</span><span>${(result.real_probability * 100).toFixed(1)}%</span></div>
+          <div class="compare-bar"><div class="compare-bar-fill bar-real" style="width:${result.real_probability * 100}%"></div></div>
+        </div>
+        <div class="compare-conf-item">
+          <div class="label"><span>FAKE</span><span>${(result.fake_probability * 100).toFixed(1)}%</span></div>
+          <div class="compare-bar"><div class="compare-bar-fill bar-fake" style="width:${result.fake_probability * 100}%"></div></div>
+        </div>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">
+        Confidence: <strong style="color:${result.is_confident ? 'var(--green)' : 'var(--red)'}">${(result.confidence * 100).toFixed(1)}%</strong>
+        ${result.is_confident ? '✓ Confident' : '⚠ Below threshold'}<span class="info-tip" style="margin-left:4px;">?<span class="tip-content"><strong>${result.is_confident ? 'Confident' : 'Uncertain'}</strong><br>${result.is_confident ? 'This prediction meets the confidence threshold and is likely reliable.' : 'This prediction is below the threshold. The result may be unreliable — consider manual review.'}</span></span>
+      </div>
+    </div>`;
+}
+
+async function compareClassifiers() {
+  const textarea = document.getElementById('compareInput');
+  const text = textarea.value.trim();
+
+  if (!text) {
+    showValidation('compareValidationMsg', 'error', '⚠ Please enter some text to compare.');
+    textarea.classList.add('error-border');
+    return;
+  }
+  if (text.length < 5) {
+    showValidation('compareValidationMsg', 'warn', '⚡ Text is very short. Comparison may be less meaningful.');
+  }
+  if (!validateCompareInput()) return;
+
+  hideValidation('compareValidationMsg');
+  textarea.classList.remove('error-border');
+
+  const btn = document.getElementById('compareBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span>Comparing...';
+
+  const threshold = parseFloat(document.getElementById('threshold').value);
+  const offlineResult = clientSideClassify(text);
+
+  let apiResult = null;
+  if (apiAvailable) {
+    try {
+      const resp = await fetch(`${API}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, confidence_threshold: threshold })
+      });
+      apiResult = await resp.json();
+    } catch (e) {
+      // API failed
+    }
+  }
+
+  const grid = document.getElementById('compareResults');
+  let html = '';
+
+  if (apiResult) {
+    const agree = apiResult.label === offlineResult.label;
+    html += renderComparePanel('ML Model (API)', 'API', 'api', apiResult);
+    html += renderComparePanel('Keyword Classifier', 'Offline', 'offline', offlineResult);
+    html += `<div class="compare-match ${agree ? 'agree' : 'disagree'}">
+      ${agree
+        ? '✅ Both classifiers agree — ' + apiResult.label + ' NEWS'
+        : '⚠️ Classifiers disagree — API says ' + apiResult.label + ', Offline says ' + offlineResult.label}
+    </div>`;
+  } else {
+    html += renderComparePanel('Keyword Classifier', 'Offline', 'offline', offlineResult);
+    html += `<div class="compare-empty" style="grid-column:1/-1;">
+      ⚠️ API not available — start <code>python api.py</code> to enable ML model comparison.
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+  btn.disabled = false;
+  btn.textContent = 'Compare Both';
+}
+
+// ── File Upload / Drag-and-Drop ──
+(function() {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const textarea = document.getElementById('batchInput');
+
+  if (!dropZone || !fileInput) return;
+
+  // Click to open file picker
+  dropZone.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'STRONG') fileInput.click();
+  });
+  dropZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+
+  // Drag events
+  ['dragenter', 'dragover'].forEach(evt => {
+    dropZone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.add('drag-over');
+    });
+  });
+  ['dragleave', 'drop'].forEach(evt => {
+    dropZone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.classList.remove('drag-over');
+    });
+  });
+
+  // Handle drop
+  dropZone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  });
+
+  // Handle file input change
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) processFile(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  function processFile(file) {
+    if (!file.name.match(/\.(txt|csv)$/i)) {
+      alert('Please upload a .txt or .csv file.');
+      return;
+    }
+    if (file.size > 100 * 1024) {
+      alert('File too large (max 100 KB).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target.result.trim();
+      if (!content) { alert('File appears to be empty.'); return; }
+      // Append to existing content
+      const existing = textarea.value.trim();
+      const newContent = existing ? existing + '\n' + content : content;
+      textarea.value = newContent;
+      validateBatchInput();
+      // Show success state
+      dropZone.classList.add('loaded');
+      const icon = dropZone.querySelector('.drop-zone-icon');
+      const text = dropZone.querySelector('.drop-zone-text');
+      icon.textContent = '✅';
+      text.innerHTML = `Loaded <strong>${file.name}</strong> (${content.split('\n').filter(l => l.trim()).length} articles)`;
+      setTimeout(() => {
+        dropZone.classList.remove('loaded');
+        icon.textContent = '📄';
+        text.innerHTML = 'Drag & drop a <strong>.txt</strong> file here or <strong>browse</strong>';
+      }, 3000);
+    };
+    reader.readAsText(file);
+  }
+})();
+
+// ── URL parameter support ──
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const text = params.get('text');
+  if (text) {
+    document.getElementById('inputText').value = text;
+    document.getElementById('compareInput').value = text;
+    validateSingleInput();
+  }
+  const threshold = params.get('threshold');
+  if (threshold) {
+    const slider = document.getElementById('threshold');
+    slider.value = threshold;
+    updateThreshold(threshold);
+  }
+  const tab = params.get('tab');
+  if (tab === 'batch') switchTab('batch');
+})();
+
+// ── Help Guide Toggle ──
+function toggleHelp() {
+  const body = document.getElementById('helpBody');
+  const arrow = document.getElementById('helpArrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// Init
+checkHealth();
+renderHistory();
+
+// Check initial internet status
+if (!navigator.onLine) {
+  document.getElementById('statusDot').classList.remove('live');
+  document.getElementById('statusText').textContent = 'No internet connection — offline classifier active';
+  setModeBadge('offline');
+}
+</script>
+</body>
+</html>

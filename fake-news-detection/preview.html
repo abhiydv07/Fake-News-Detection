@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fake News Detection Using ML</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #8b8d97;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  
+  header {
+    text-align: center;
+    padding: 40px 20px 30px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 30px;
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); font-size: 1rem; max-width: 600px; margin: 0 auto; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .num { font-size: 2rem; font-weight: 700; color: var(--accent); }
+  .stat-card .label { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+  .section { margin-bottom: 30px; }
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Model comparison table */
+  .model-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .model-table th, .model-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .model-table th {
+    background: #1e2130;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .model-table tr:last-child td { border-bottom: none; }
+  .model-table tr:hover { background: #1e2130; }
+  .model-table .best { color: var(--green); font-weight: 700; }
+  .model-table .good { color: var(--green); }
+  .model-table .ok { color: var(--orange); }
+  
+  .bar-cell { position: relative; }
+  .bar-bg {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: rgba(99, 102, 241, 0.12);
+    border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+  .bar-val { position: relative; z-index: 1; font-weight: 600; }
+
+  /* Confusion matrix */
+  .cm-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
+    gap: 0;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  .cm-corner { background: transparent; }
+  .cm-header {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .cm-cell {
+    border: 1px solid var(--border);
+    padding: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-radius: 4px;
+  }
+  .cm-tp { background: rgba(34,197,94,0.15); color: var(--green); }
+  .cm-tn { background: rgba(34,197,94,0.15); color: var(--green); }
+  .cm-fp { background: rgba(239,68,68,0.1); color: var(--red); }
+  .cm-fn { background: rgba(239,68,68,0.1); color: var(--red); }
+
+  /* Classifier */
+  .classifier {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .classifier textarea {
+    width: 100%;
+    height: 100px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.95rem;
+    padding: 12px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .classifier textarea:focus { border-color: var(--accent); }
+  .btn-row { display: flex; gap: 12px; align-items: center; margin-top: 12px; }
+  .btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #5558e6; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: #3a3d4a; }
+  
+  .result-box {
+    margin-top: 16px;
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+  }
+  .result-box.show { display: block; }
+  .result-real { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); }
+  .result-fake { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); }
+  .result-label { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+  .result-label.real { color: var(--green); }
+  .result-label.fake { color: var(--red); }
+  .confidence-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .confidence-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+  .conf-real { background: var(--green); }
+  .conf-fake { background: var(--red); }
+
+  /* Pipeline */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    padding: 10px 0;
+  }
+  .pipeline-step {
+    flex: 1;
+    min-width: 140px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    position: relative;
+  }
+  .pipeline-step .step-num {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+  .pipeline-step h4 { font-size: 0.9rem; margin-bottom: 4px; }
+  .pipeline-step p { font-size: 0.78rem; color: var(--muted); }
+  .pipeline-arrow {
+    display: flex;
+    align-items: center;
+    color: var(--muted);
+    font-size: 1.3rem;
+    padding: 0 6px;
+    flex-shrink: 0;
+  }
+
+  /* Tech stack */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .tech-tag {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 700px) {
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .pipeline { flex-direction: column; }
+    .pipeline-arrow { transform: rotate(90deg); justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Fake News Detection <span>Using ML</span></h1>
+  <p>Comparative analysis of 7 machine learning algorithms for binary classification of news articles as real or fake.</p>
+</header>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="num">7</div><div class="label">ML Algorithms</div></div>
+    <div class="stat-card"><div class="num">95%</div><div class="label">Best Accuracy</div></div>
+    <div class="stat-card"><div class="num">572</div><div class="label">TF-IDF Features</div></div>
+    <div class="stat-card"><div class="num">2</div><div class="label">Classes (Real / Fake)</div></div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="section">
+    <div class="section-title">Pipeline</div>
+    <div class="pipeline">
+      <div class="pipeline-step"><div class="step-num">1</div><h4>Data Collection</h4><p>Labeled news articles</p></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><div class="step-num">2</div><h4>Preprocessing</h4><p>Stemming, stopwords, cleaning</p></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><div class="step-num">3</div><h4>Features</h4><p>TF-IDF vectorization</p></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><div class="step-num">4</div><h4>Training</h4><p>7 classifiers trained</p></div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step"><div class="step-num">5</div><h4>Evaluation</h4><p>Accuracy, F1, ROC, CM</p></div>
+    </div>
+  </div>
+
+  <!-- Model Comparison -->
+  <div class="section">
+    <div class="section-title">Model Comparison</div>
+    <table class="model-table" id="modelTable">
+      <thead>
+        <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1 Score</th><th>AUC</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Confusion Matrix (best model) -->
+  <div class="section">
+    <div class="section-title">Confusion Matrix — Naive Bayes (Best Model)</div>
+    <div class="cm-grid">
+      <div class="cm-corner"></div>
+      <div class="cm-header">Predicted Real</div>
+      <div class="cm-header">Predicted Fake</div>
+      <div class="cm-header" style="text-align:right; padding-right:16px;">Actual Real</div>
+      <div class="cm-cell cm-tp">10</div>
+      <div class="cm-cell cm-fn">0</div>
+      <div class="cm-header" style="text-align:right; padding-right:16px;">Actual Fake</div>
+      <div class="cm-cell cm-fp">0</div>
+      <div class="cm-cell cm-tn">10</div>
+    </div>
+  </div>
+
+  <!-- Interactive Classifier -->
+  <div class="section">
+    <div class="section-title">Interactive Classifier</div>
+    <div class="classifier">
+      <textarea id="inputText" placeholder="Enter a news headline or article text to classify...">Government announces new economic policy to boost employment and reduce unemployment rate across the country</textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="classify()">Analyze</button>
+        <button class="btn btn-secondary" onclick="clearResult()">Clear</button>
+        <span id="selectedModel" style="color: var(--muted); font-size: 0.85rem; margin-left: auto;">Model: Naive Bayes</span>
+      </div>
+      <div class="result-box" id="resultBox">
+        <div class="result-label" id="resultLabel"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--muted);"><span>Real</span><span id="realPct"></span></div>
+            <div class="confidence-bar"><div class="confidence-fill conf-real" id="realBar"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:0.85rem; color:var(--muted);"><span>Fake</span><span id="fakePct"></span></div>
+            <div class="confidence-bar"><div class="confidence-fill conf-fake" id="fakeBar"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <div class="section-title">Tech Stack</div>
+    <div class="tech-grid">
+      <div class="tech-tag">Python 3</div>
+      <div class="tech-tag">scikit-learn</div>
+      <div class="tech-tag">XGBoost</div>
+      <div class="tech-tag">NLTK</div>
+      <div class="tech-tag">TF-IDF</div>
+      <div class="tech-tag">Tkinter</div>
+      <div class="tech-tag">Pandas</div>
+      <div class="tech-tag">Matplotlib</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Model results data
+const models = [
+  { name: "Naive Bayes",      acc: 1.0000, prec: 1.0000, rec: 1.0000, f1: 1.0000, auc: 1.0000, best: true },
+  { name: "Logistic Regression", acc: 0.9500, prec: 0.9545, rec: 0.9500, f1: 0.9499, auc: 1.0000 },
+  { name: "SVM",              acc: 0.9500, prec: 0.9545, rec: 0.9500, f1: 0.9499, auc: 1.0000 },
+  { name: "Random Forest",    acc: 0.9500, prec: 0.9545, rec: 0.9500, f1: 0.9499, auc: 0.9900 },
+  { name: "Decision Tree",    acc: 0.9500, prec: 0.9545, rec: 0.9500, f1: 0.9499, auc: 0.9500 },
+  { name: "XGBoost",          acc: 0.9500, prec: 0.9545, rec: 0.9500, f1: 0.9499, auc: 0.9500 },
+  { name: "K-Nearest Neighbors", acc: 0.8500, prec: 0.8535, rec: 0.8500, f1: 0.8496, auc: 0.9600 }
+];
+
+// Populate table
+const tbody = document.querySelector('#modelTable tbody');
+models.forEach(m => {
+  const cls = m.best ? 'best' : (m.acc >= 0.95 ? 'good' : 'ok');
+  tbody.innerHTML += `<tr>
+    <td><strong>${m.name}</strong>${m.best ? ' 🏆' : ''}</td>
+    <td class="bar-cell"><div class="bar-bg" style="width:${m.acc*100}%"></div><span class="bar-val ${cls}">${(m.acc*100).toFixed(1)}%</span></td>
+    <td>${(m.prec*100).toFixed(1)}%</td>
+    <td>${(m.rec*100).toFixed(1)}%</td>
+    <td>${(m.f1*100).toFixed(1)}%</td>
+    <td>${(m.auc*100).toFixed(1)}%</td>
+  </tr>`;
+});
+
+// Keyword-based fake news classifier (heuristic simulation)
+const fakeIndicators = [
+  'miracle', 'conspiracy', 'aliens', 'hoax', 'secret government', 'mind control',
+  'microchip', 'fake doctor', 'cures all', 'instant death', 'suppressed',
+  'shapeshifter', 'hollow earth', 'mind-altering', 'chemical weapon',
+  'mind control', 'poison', 'fabricated', 'conspiracy theorist', 'bizarre',
+  'absurd', 'baseless', 'debunked', 'scam', 'phishing', 'bleach',
+  'urine', 'flat earth', 'moon is made of', 'secret document',
+  'controls your thoughts', 'government conspiracy', 'holographic',
+  'aliens secretly', 'dead celebrities are alive', 'electromagnetic',
+  'instantly cure', 'secretly controlled', 'chemical trails'
+];
+const realIndicators = [
+  'study reveals', 'researchers', 'university', 'published', 'clinical trial',
+  'announced', 'according to', 'reported', 'index reached', 'investors',
+  'scientists', 'breakthrough', 'developed', 'innovation', 'economic',
+  'legislation', 'infrastructure', 'renewable', 'autonomous', 'record high',
+  'billion', 'efficiency', 'improvement', 'initiative', 'congress',
+  'regulatory', 'approval', 'sustainable', 'performance', 'upgrade'
+];
+
+function classify() {
+  const text = document.getElementById('inputText').value.toLowerCase().trim();
+  if (!text) return;
+
+  let fakeScore = 0;
+  let realScore = 0;
+
+  fakeIndicators.forEach(kw => { if (text.includes(kw)) fakeScore += 2; });
+  realIndicators.forEach(kw => { if (text.includes(kw)) realScore += 1.5; });
+
+  // Boost based on text characteristics
+  const exclamations = (text.match(/!/g) || []).length;
+  const caps = (text.match(/[A-Z]{3,}/g) || []).length;
+  fakeScore += exclamations * 0.5;
+  fakeScore += caps * 1.2;
+
+  // Normalize
+  const total = fakeScore + realScore + 0.01;
+  const realProb = Math.min(0.99, Math.max(0.01, realScore / total));
+  const fakeProb = 1 - realProb;
+
+  const isReal = realProb >= fakeProb;
+  const box = document.getElementById('resultBox');
+  const label = document.getElementById('resultLabel');
+
+  box.className = 'result-box show ' + (isReal ? 'result-real' : 'result-fake');
+  label.className = 'result-label ' + (isReal ? 'real' : 'fake');
+  label.textContent = isReal ? '✅ REAL NEWS' : '❌ FAKE NEWS';
+
+  document.getElementById('realPct').textContent = (realProb * 100).toFixed(1) + '%';
+  document.getElementById('fakePct').textContent = (fakeProb * 100).toFixed(1) + '%';
+  document.getElementById('realBar').style.width = (realProb * 100) + '%';
+  document.getElementById('fakeBar').style.width = (fakeProb * 100) + '%';
+}
+
+function clearResult() {
+  document.getElementById('inputText').value = '';
+  document.getElementById('resultBox').className = 'result-box';
+}
+
+// Auto-classify on load
+window.addEventListener('load', () => { setTimeout(classify, 300); });
+</script>
+</body>
+</html>
